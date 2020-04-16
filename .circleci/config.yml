@@ -1,17 +1,45 @@
 version: 2.1
-orbs:
-  node: circleci/node@1.1.6
+commands:
+   install_deps:
+     steps:
+       - run:
+           name: Install Dependencies
+           command: |
+              npm install
+
 jobs:
-  build-and-test:
-    executor:
-      name: node/default
+  build:
+    docker:
+      - image: circleci/node:lts
     steps:
       - checkout
-      - node/with-cache:
-          steps:
-            - run: npm install
-            - run: npm test
+      - install_deps
+      - run:
+         name: Run Tests
+         command: |
+           npm test
+  pack:
+    docker:
+      - image: circleci/node:lts
+    steps:
+      - checkout
+      - install_deps
+      - run:
+         name: compiles
+         command: |
+           npm pack .
+           mkdir /home/circleci/project/dist
+           mv *.tgz /home/circleci/project/dist
+      - store_artifacts:
+         path: dist
+
 workflows:
-    build-and-test:
-      jobs:
-        - build-and-test
+  build-and-package:
+    jobs:
+      - build
+      - pack:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
